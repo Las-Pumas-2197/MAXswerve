@@ -56,7 +56,7 @@ public class Robot extends TimedRobot {
   /** This autonomous runs the autonomous command selected by your {@link RobotContainer} class. */
   @Override
   public void autonomousInit() {
-    m_autonomousCommand = m_robotContainer.getAutonomousCommand();
+    m_autonomousCommand = m_robotContainer.exampleauto();
 
     /*
      * String autoSelected = SmartDashboard.getString("Auto Selector",
@@ -88,7 +88,10 @@ public class Robot extends TimedRobot {
 
   /** This function is called periodically during operator control. */
   @Override
-  public void teleopPeriodic() {}
+  public void teleopPeriodic() {
+    m_robotContainer.telemetry();
+    m_robotContainer.getBatteryVoltage();
+  }
 
   @Override
   public void testInit() {

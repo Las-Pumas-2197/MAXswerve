@@ -1,14 +1,15 @@
-package frc.robot;
+package frc.robot.subsystems;
 
+import com.revrobotics.spark.config.SparkFlexConfig;
 import com.revrobotics.spark.config.SparkMaxConfig;
 import com.revrobotics.spark.config.ClosedLoopConfig.FeedbackSensor;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 
-import frc.robot.Constants.ModuleConstants;
+import frc.robot.utils.Constants.ModuleConstants;
 
-public final class Configs {
+public final class SwerveConfigs {
     public static final class MAXSwerveModule {
-        public static final SparkMaxConfig drivingConfig = new SparkMaxConfig();
+        public static final SparkFlexConfig drivingConfig = new SparkFlexConfig();
         public static final SparkMaxConfig turningConfig = new SparkMaxConfig();
 
         static {
@@ -52,5 +53,9 @@ public final class Configs {
                     .positionWrappingEnabled(true)
                     .positionWrappingInputRange(0, turningFactor);
         }
+    }
+
+    public static final class PPconfig {
+
     }
 }
