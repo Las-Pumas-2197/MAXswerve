@@ -79,7 +79,7 @@ public class DriveSubsystem extends SubsystemBase {
       e.printStackTrace();
     }
     
-    //configure autobuilder
+  //configure autobuilder
   AutoBuilder.configure(
       this::getPose, // Robot pose supplier
       this::resetOdometry, // Method to reset odometry (will be called if your auto has a starting pose)
@@ -173,13 +173,27 @@ public class DriveSubsystem extends SubsystemBase {
     m_rearLeft.setDesiredState(swerveModuleStates[2]);
     m_rearRight.setDesiredState(swerveModuleStates[3]);
   }
-  public void autoDrive(ChassisSpeeds chassisSpeeds){
+
+  /**
+   * Drive robot using passed robot-relative ChassisSpeeds with no discretization and no optimization. Used
+   * exclusively with PathPlanner, as Path Planner cannot accomodate the optimization function, and will correct for
+   * any translational error caused by not discretizing the states.
+   * @param chassisSpeeds Robot-oriented chassis speeds.
+   */
+  private void autoDrive(ChassisSpeeds chassisSpeeds){
     var swerveModuleStates = DriveConstants.kDriveKinematics.toSwerveModuleStates(chassisSpeeds);
     m_frontLeft.setDesiredState(swerveModuleStates[0]);
     m_frontRight.setDesiredState(swerveModuleStates[1]);
     m_rearLeft.setDesiredState(swerveModuleStates[2]);
     m_rearRight.setDesiredState(swerveModuleStates[3]);
   }
+
+
+  /**
+   * Get the states of the drivetrain in an array of SwerveModuleStates.
+   * 
+   * @return The array.
+   */
   public SwerveModuleState[] getStates() {
     return new SwerveModuleState[] {
       m_frontLeft.getState(),
@@ -189,6 +203,11 @@ public class DriveSubsystem extends SubsystemBase {
     };
   }
 
+  /**
+   * Runs forward kinematics to get the robot-relative chassis speeds.
+   * 
+   * @return ChassisSpeeds containing the speeds.
+   */
   public ChassisSpeeds getSpeeds() {
     return DriveConstants.kDriveKinematics.toChassisSpeeds(getStates());
   }
