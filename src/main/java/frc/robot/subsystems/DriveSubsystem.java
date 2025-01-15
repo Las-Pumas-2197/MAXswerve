@@ -197,6 +197,13 @@ public class DriveSubsystem extends SubsystemBase {
     m_rearLeft.setDesiredState(swerveModuleStates[2], false);
     m_rearRight.setDesiredState(swerveModuleStates[3], false);
   }
+
+
+  /**
+   * Get the states of the drivetrain in an array of SwerveModuleStates.
+   * 
+   * @return The array.
+   */
   public SwerveModuleState[] getStates() {
     return new SwerveModuleState[] {
       m_frontLeft.getState(),
@@ -206,6 +213,11 @@ public class DriveSubsystem extends SubsystemBase {
     };
   }
 
+  /**
+   * Runs forward kinematics to get the robot-relative chassis speeds.
+   * 
+   * @return ChassisSpeeds containing the speeds.
+   */
   public ChassisSpeeds getSpeeds() {
     return DriveConstants.kDriveKinematics.toChassisSpeeds(getStates());
   }
