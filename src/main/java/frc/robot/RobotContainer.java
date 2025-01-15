@@ -10,6 +10,7 @@ import com.pathplanner.lib.commands.PathPlannerAuto;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.wpilibj.PowerDistribution;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.PowerDistribution.ModuleType;
@@ -38,6 +39,8 @@ public class RobotContainer {
   //auto trajectory
   private final PathPlannerAuto auto1 = new PathPlannerAuto("Auto1");
 
+  private double headingtransformed;
+
   /**
    * The container for the robot. Contains subsystems, OI devices, and commands.
    */
@@ -54,7 +57,10 @@ public class RobotContainer {
                 -MathUtil.applyDeadband(m_driverController.getLeftY(), OIConstants.kDriveDeadband),
                 -MathUtil.applyDeadband(m_driverController.getLeftX(), OIConstants.kDriveDeadband),
                 -MathUtil.applyDeadband(m_driverController.getRightX(), OIConstants.kDriveDeadband),
-                true),
+                true,
+                true,
+                headingtransformed
+              ),
             m_robotDrive));
   }
 
@@ -73,8 +79,23 @@ public class RobotContainer {
     m_driverController.x().onTrue(runOnce(() -> m_robotDrive.resetOdometry(new Pose2d())));
   }
 
+  public void updateHeading() {
+    headingtransformed = 
+    MathUtil.angleModulus(
+      headingtransformed + 
+      ((MathUtil.applyDeadband(m_driverController.getLeftTriggerAxis(), OIConstants.kDriveDeadband) + 
+      -MathUtil.applyDeadband(m_driverController.getRightTriggerAxis(), OIConstants.kDriveDeadband))*0.04)
+    );
+  }
+
+  public double getJoystickHeading(){
+    return MathUtil.angleModulus(-(Math.atan2(m_driverController.getRawAxis(5), -m_driverController.getRawAxis(4))) + 0.5 * Math.PI);
+  }
+
+
   public void getBatteryVoltage() {
     SmartDashboard.putNumber("Voltage", pdh.getVoltage());
+    SmartDashboard.putString("PDH error", pdh.getStickyFaults().toString());
   }
 
   public Command exampleauto() {
@@ -85,10 +106,12 @@ public class RobotContainer {
     SmartDashboard.putNumber("Xpos", m_robotDrive.getPose().getX());
     SmartDashboard.putNumber("Ypos", m_robotDrive.getPose().getY());
     SmartDashboard.putNumber("Heading", m_robotDrive.getPose().getRotation().getRadians());
+    SmartDashboard.putNumber("FL module drive speed", m_robotDrive.getStates()[0].speedMetersPerSecond);
     
     //Chassis Speeds
     SmartDashboard.putNumber("ChassisSpeedX", m_robotDrive.getSpeeds().vxMetersPerSecond);
     SmartDashboard.putNumber("ChassisSpeedY", m_robotDrive.getSpeeds().vyMetersPerSecond);
     SmartDashboard.putNumber("Radians Per Second", m_robotDrive.getSpeeds().omegaRadiansPerSecond);
+    SmartDashboard.putNumber("Trigger Heading", headingtransformed);
   }
 }

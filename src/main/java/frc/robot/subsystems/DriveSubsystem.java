@@ -14,6 +14,8 @@ import com.pathplanner.lib.config.RobotConfig;
 import com.pathplanner.lib.controllers.PPHolonomicDriveController;
 
 import edu.wpi.first.hal.HAL;
+import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.controller.ProfiledPIDController;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
@@ -22,6 +24,7 @@ import edu.wpi.first.math.kinematics.SwerveDriveOdometry;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.wpilibj.DriverStation;
+import frc.robot.utils.Constants.AutoConstants;
 import frc.robot.utils.Constants.DriveConstants;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
@@ -46,7 +49,6 @@ public class DriveSubsystem extends SubsystemBase {
       DriveConstants.kRearRightDrivingCanId,
       DriveConstants.kRearRightTurningCanId,
       DriveConstants.kBackRightChassisAngularOffset);
-
   // The gyro sensor
   //private final ADIS16470_IMU m_gyro = new ADIS16470_IMU();
   private final Pigeon2 pigeon2 = new Pigeon2(20);
@@ -55,7 +57,7 @@ public class DriveSubsystem extends SubsystemBase {
   SwerveDriveOdometry m_odometry = new SwerveDriveOdometry(
       DriveConstants.kDriveKinematics,
       //Rotation2d.fromDegrees(m_gyro.getAngle(IMUAxis.kZ)),
-      Rotation2d.fromDegrees(pigeon2.getYaw().getValueAsDouble()),
+      Rotation2d.fromRadians(getHeading()),
       new SwerveModulePosition[] {
           m_frontLeft.getPosition(),
           m_frontRight.getPosition(),
@@ -65,10 +67,17 @@ public class DriveSubsystem extends SubsystemBase {
 
   //PP configuration
   private RobotConfig robotConfig;
+  private final ProfiledPIDController headingController;
 
   /** Creates a new DriveSubsystem. */
   public DriveSubsystem() {
+    headingController = new ProfiledPIDController(
+    AutoConstants.kPRotationController, 
+    0, AutoConstants.kDRotationController,
+    AutoConstants.kThetaControllerConstraints
+    );
 
+    headingController.enableContinuousInput(-Math.PI, Math.PI);
     // Usage reporting for MAXSwerve template
     HAL.report(tResourceType.kResourceType_RobotDrive, tInstances.kRobotDriveSwerve_MaxSwerve);
     
@@ -78,7 +87,6 @@ public class DriveSubsystem extends SubsystemBase {
     } catch (Exception e) {
       e.printStackTrace();
     }
-    
     //configure autobuilder
   AutoBuilder.configure(
       this::getPose, // Robot pose supplier
@@ -109,7 +117,7 @@ public class DriveSubsystem extends SubsystemBase {
     // Update the odometry in the periodic block
     m_odometry.update(
         //Rotation2d.fromDegrees(m_gyro.getAngle(IMUAxis.kZ)),
-        Rotation2d.fromDegrees(pigeon2.getYaw().getValueAsDouble()),
+        Rotation2d.fromRadians(getHeading()),
         new SwerveModulePosition[] {
             m_frontLeft.getPosition(),
             m_frontRight.getPosition(),
@@ -135,7 +143,7 @@ public class DriveSubsystem extends SubsystemBase {
   public void resetOdometry(Pose2d pose) {
     m_odometry.resetPosition(
         //Rotation2d.fromDegrees(m_gyro.getAngle(IMUAxis.kZ)),
-        Rotation2d.fromDegrees(pigeon2.getYaw().getValueAsDouble()),
+        Rotation2d.fromRadians(getHeading()),
         new SwerveModulePosition[] {
             m_frontLeft.getPosition(),
             m_frontRight.getPosition(),
@@ -154,31 +162,40 @@ public class DriveSubsystem extends SubsystemBase {
    * @param fieldRelative Whether the provided x and y speeds are relative to the
    *                      field.
    */
-  public void drive(double xSpeed, double ySpeed, double rot, boolean fieldRelative) {
+  public void drive(double xSpeed, double ySpeed, double rot, boolean fieldRelative, boolean rotationCorrection, double desiredHeading) {
+
+    //heading correction conditional
+    double rotDelivered;
+    if(rotationCorrection == true){
+      rotDelivered = headingController.calculate(getHeading(), desiredHeading);
+    }else{
+      rotDelivered = rot * DriveConstants.kMaxAngularSpeed;
+    }
+
     // Convert the commanded speeds into the correct units for the drivetrain
     double xSpeedDelivered = xSpeed * DriveConstants.kMaxSpeedMetersPerSecond;
     double ySpeedDelivered = ySpeed * DriveConstants.kMaxSpeedMetersPerSecond;
-    double rotDelivered = rot * DriveConstants.kMaxAngularSpeed;
-
     var swerveModuleStates = DriveConstants.kDriveKinematics.toSwerveModuleStates(
         fieldRelative
             ? ChassisSpeeds.fromFieldRelativeSpeeds(xSpeedDelivered, ySpeedDelivered, rotDelivered,
                 //Rotation2d.fromDegrees(m_gyro.getAngle(IMUAxis.kZ)))
-                Rotation2d.fromDegrees(pigeon2.getYaw().getValueAsDouble()))
+                Rotation2d.fromRadians(getHeading()))
             : new ChassisSpeeds(xSpeedDelivered, ySpeedDelivered, rotDelivered));
     SwerveDriveKinematics.desaturateWheelSpeeds(
         swerveModuleStates, DriveConstants.kMaxSpeedMetersPerSecond);
-    m_frontLeft.setDesiredState(swerveModuleStates[0]);
-    m_frontRight.setDesiredState(swerveModuleStates[1]);
-    m_rearLeft.setDesiredState(swerveModuleStates[2]);
-    m_rearRight.setDesiredState(swerveModuleStates[3]);
+      
+    m_frontLeft.setDesiredState(swerveModuleStates[0], true);
+    m_frontRight.setDesiredState(swerveModuleStates[1], true);
+    m_rearLeft.setDesiredState(swerveModuleStates[2], true);
+    m_rearRight.setDesiredState(swerveModuleStates[3], true);
   }
+  
   public void autoDrive(ChassisSpeeds chassisSpeeds){
     var swerveModuleStates = DriveConstants.kDriveKinematics.toSwerveModuleStates(chassisSpeeds);
-    m_frontLeft.setDesiredState(swerveModuleStates[0]);
-    m_frontRight.setDesiredState(swerveModuleStates[1]);
-    m_rearLeft.setDesiredState(swerveModuleStates[2]);
-    m_rearRight.setDesiredState(swerveModuleStates[3]);
+    m_frontLeft.setDesiredState(swerveModuleStates[0], false);
+    m_frontRight.setDesiredState(swerveModuleStates[1], false);
+    m_rearLeft.setDesiredState(swerveModuleStates[2], false);
+    m_rearRight.setDesiredState(swerveModuleStates[3], false);
   }
   public SwerveModuleState[] getStates() {
     return new SwerveModuleState[] {
@@ -197,10 +214,10 @@ public class DriveSubsystem extends SubsystemBase {
    * Sets the wheels into an X formation to prevent movement.
    */
   public void setX() {
-    m_frontLeft.setDesiredState(new SwerveModuleState(0, Rotation2d.fromDegrees(45)));
-    m_frontRight.setDesiredState(new SwerveModuleState(0, Rotation2d.fromDegrees(-45)));
-    m_rearLeft.setDesiredState(new SwerveModuleState(0, Rotation2d.fromDegrees(-45)));
-    m_rearRight.setDesiredState(new SwerveModuleState(0, Rotation2d.fromDegrees(45)));
+    m_frontLeft.setDesiredState(new SwerveModuleState(0, Rotation2d.fromDegrees(45)), true);
+    m_frontRight.setDesiredState(new SwerveModuleState(0, Rotation2d.fromDegrees(-45)), true);
+    m_rearLeft.setDesiredState(new SwerveModuleState(0, Rotation2d.fromDegrees(-45)), true);
+    m_rearRight.setDesiredState(new SwerveModuleState(0, Rotation2d.fromDegrees(45)), true);
   }
 
   /**
@@ -211,10 +228,10 @@ public class DriveSubsystem extends SubsystemBase {
   public void setModuleStates(SwerveModuleState[] desiredStates) {
     SwerveDriveKinematics.desaturateWheelSpeeds(
         desiredStates, DriveConstants.kMaxSpeedMetersPerSecond);
-    m_frontLeft.setDesiredState(desiredStates[0]);
-    m_frontRight.setDesiredState(desiredStates[1]);
-    m_rearLeft.setDesiredState(desiredStates[2]);
-    m_rearRight.setDesiredState(desiredStates[3]);
+    m_frontLeft.setDesiredState(desiredStates[0], true);
+    m_frontRight.setDesiredState(desiredStates[1], true);
+    m_rearLeft.setDesiredState(desiredStates[2], true);
+    m_rearRight.setDesiredState(desiredStates[3], true);
   }
 
   /** Resets the drive encoders to currently read a position of 0. */
@@ -238,7 +255,7 @@ public class DriveSubsystem extends SubsystemBase {
    */
   public double getHeading() {
     //return Rotation2d.fromDegrees(m_gyro.getAngle(IMUAxis.kZ)).getDegrees();
-    return Rotation2d.fromDegrees(pigeon2.getYaw().getValueAsDouble()).getDegrees();
+    return MathUtil.angleModulus((pigeon2.getYaw().getValueAsDouble() / 180) * Math.PI);
   }
 
   /**

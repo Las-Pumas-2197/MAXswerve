@@ -26,6 +26,7 @@ public final class Constants {
     // Driving Parameters - Note that these are not the maximum capable speeds of
     // the robot, rather the allowed maximum speeds
     public static final double kMaxSpeedMetersPerSecond = 5.74;
+    public static final double kMaxAccelerationMetersPerSecond = 3;
     public static final double kMaxAngularSpeed = 2 * Math.PI; // radians per second
 
     // Chassis configuration
@@ -86,10 +87,9 @@ public final class Constants {
     public static final double kMaxAccelerationMetersPerSecondSquared = 1;
     public static final double kMaxAngularSpeedRadiansPerSecond = Math.PI;
     public static final double kMaxAngularSpeedRadiansPerSecondSquared = Math.PI;
-
-    public static final double kPTranslationController = 1;
+    public static final double kPTranslationController = 5;
     public static final double kDTranslationController = 0;
-    public static final double kPRotationController = 1;
+    public static final double kPRotationController = 5;
     public static final double kDRotationController = 0;
 
     // Constraint for the motion profiled robot angle controller
